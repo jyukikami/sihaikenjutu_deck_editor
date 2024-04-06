@@ -1,0 +1,2480 @@
+<!DOCTYPE html>
+<html lang="jp">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/vuetify@3.5.13/dist/vuetify.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css"
+      rel="stylesheet"
+    />
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@3.5.13/dist/vuetify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <title>支配剣術デッキ編集</title>
+  </head>
+  <body>
+    <div id="app">
+      <v-app id="inspire">
+        <v-main>
+          <v-container class="" fluid>
+            <!-- デッキメニュー　＋　オプションボタン -->
+            <v-row>
+              <v-col cols="auto">
+                <v-select
+                  v-model="select_deck"
+                  :items="select_decks"
+                  item-title="name"
+                  item-value="index"
+                  label="Select"
+                  @update:model-value="update_deck_code()"
+                  persistent-hint
+                  return-object
+                  single-line
+                ></v-select>
+              </v-col>
+              <v-col cols="3">
+                <v-text-field
+                  label="名前"
+                  variant="outlined"
+                  v-model="this.decks[this.select_deck.index].name"
+                  @input="update_deck_name()"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="auto">
+                <v-btn class="ma-2" variant="tonal" @click="add_deck()">
+                  新規デッキ
+                </v-btn>
+              </v-col>
+              <v-col cols="auto">
+                <v-btn class="ma-2" variant="tonal" @click="delete_deck()">
+                  デッキ削除
+                </v-btn>
+              </v-col>
+              <v-col cols="auto">
+                <v-btn class="ma-2" variant="tonal" @click="save()">
+                  全て保存
+                </v-btn>
+              </v-col>
+              <v-col cols="auto">
+                <v-btn class="ma-2" variant="tonal" @click="shuffle_card()">
+                  テスト
+                </v-btn>
+              </v-col>
+              <v-col cols="auto" class="ms-auto">
+                <v-btn
+                  density="default"
+                  icon="mdi-cog"
+                  @click="show_option = !show_option"
+                ></v-btn>
+              </v-col>
+            </v-row>
+            <!-- オプション -->
+            <v-expand-transition>
+              <v-row v-show="show_option">
+                <v-col cols="auto" style="width: 60vh">
+                  <v-card class="mx-auto" variant="outlined">
+                    <v-card-title class="text-h6 font-weight-bold"
+                      >オプション</v-card-title
+                    >
+                    <v-row>
+                      <v-col>
+                        <p class="text-h6 pa-2">デッキ</p>
+                      </v-col>
+                    </v-row>
+                    <v-divider></v-divider>
+                    <v-row>
+                      <v-col cols="3">
+                        <p>カードサイズ</p>
+                      </v-col>
+                      <v-col>
+                        <v-slider
+                          v-model="options.deck_card_size"
+                          max="500"
+                          min="20"
+                          thumb-label
+                        ></v-slider>
+                      </v-col>
+                    </v-row>
+                    <v-divider
+                      :thickness="3"
+                      class="border-opacity-75"
+                    ></v-divider>
+                    <v-row>
+                      <v-col>
+                        <p class="text-h6 pa-2">カード一覧</p>
+                      </v-col>
+                    </v-row>
+                    <v-divider></v-divider>
+                    <v-row>
+                      <v-col cols="3">
+                        <p>カードサイズ</p>
+                      </v-col>
+                      <v-col>
+                        <v-slider
+                          v-model="options.card_size"
+                          max="500"
+                          min="20"
+                          thumb-label
+                        ></v-slider>
+                      </v-col>
+                    </v-row>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-expand-transition>
+            <!-- デッキカード -->
+            <v-row align-content="center">
+              <v-col cols="auto">
+                <p class="text-h5">デッキカード</p>
+              </v-col>
+              <v-col cols="auto">
+                <v-btn
+                  density="default"
+                  icon="mdi-information"
+                  @click="show_info = !show_info"
+                ></v-btn>
+              </v-col>
+              <v-col cols="auto">
+                <v-select
+                  v-model="deck_card_sort"
+                  :items="select_sort"
+                  label="並び順"
+                  return-object
+                ></v-select>
+              </v-col>
+              <v-col>
+                <v-text-field
+                  label="デッキコード"
+                  variant="outlined"
+                  prepend-inner-icon="mdi-content-copy"
+                  v-model="deck_code"
+                  readonly
+                  @click="copy_deck_code()"
+                ></v-text-field>
+                <v-snackbar location="top" v-model="show_snackbar_copy">
+                  コピーしました
+
+                  <template v-slot:actions>
+                    <v-btn
+                      color="pink"
+                      variant="text"
+                      @click="show_snackbar_copy = false"
+                    >
+                      閉じる
+                    </v-btn>
+                  </template>
+                </v-snackbar>
+              </v-col>
+              <v-col cols="2">
+                <v-switch
+                  v-model="is_copy"
+                  :label="is_copy ? 'デッキコピー許可' : 'デッキコピー不可'"
+                  @update:model-value="update_deck_code()"
+                  inset
+                ></v-switch>
+              </v-col>
+            </v-row>
+            <!-- デッキ情報 -->
+            <v-expand-transition>
+              <v-row v-show="show_info">
+                <v-col cols="auto">
+                  <v-card class="mx-auto bg-grey-darken-3" variant="outlined">
+                    <v-card-title class="text-h6 text-center"
+                      >コスト</v-card-title
+                    >
+                    <v-divider></v-divider>
+                    <v-row align-content="center">
+                      <v-col class="px-3 py-3 font-weight-bold">0</v-col>
+                      <v-col class="px-3 py-3 font-weight-bold">1</v-col>
+                      <v-col class="px-3 py-3 font-weight-bold">2</v-col>
+                      <v-col class="px-3 py-3 font-weight-bold">3</v-col>
+                    </v-row>
+                    <v-divider></v-divider>
+                    <v-row>
+                      <v-col class="px-3 py-3"
+                        >{{ deck_cards.filter(e=>e.cost === 0).length
+                        }}枚</v-col
+                      >
+                      <v-col class="px-3 py-3"
+                        >{{ deck_cards.filter(e=>e.cost === 1).length
+                        }}枚</v-col
+                      >
+                      <v-col class="px-3 py-3"
+                        >{{ deck_cards.filter(e=>e.cost === 2).length
+                        }}枚</v-col
+                      >
+                      <v-col class="px-3 py-3"
+                        >{{ deck_cards.filter(e=>e.cost === 3).length
+                        }}枚</v-col
+                      >
+                    </v-row>
+                  </v-card>
+                </v-col>
+                <v-col cols="auto">
+                  <v-card class="mx-auto bg-grey-darken-3" variant="outlined">
+                    <v-card-title class="text-h6 text-center"
+                      >強度</v-card-title
+                    >
+                    <v-divider></v-divider>
+                    <v-row align-content="center">
+                      <v-col class="px-3 py-3 font-weight-bold" cols="auto"
+                        >呪文</v-col
+                      >
+                      <v-col class="px-3 py-3 font-weight-bold">滅</v-col>
+                      <v-col class="px-3 py-3 font-weight-bold">1</v-col>
+                      <v-col class="px-3 py-3 font-weight-bold">2</v-col>
+                      <v-col class="px-3 py-3 font-weight-bold">3</v-col>
+                      <v-col class="px-3 py-3 font-weight-bold">4</v-col>
+                    </v-row>
+                    <v-divider></v-divider>
+                    <v-row>
+                      <v-col class="px-3 py-3"
+                        >{{ deck_cards.filter(e=>e.strength === null).length
+                        }}枚</v-col
+                      >
+                      <v-col class="px-3 py-3"
+                        >{{ deck_cards.filter(e=>e.strength === 0).length
+                        }}枚</v-col
+                      >
+                      <v-col class="px-3 py-3"
+                        >{{ deck_cards.filter(e=>e.strength === 1).length
+                        }}枚</v-col
+                      >
+                      <v-col class="px-3 py-3"
+                        >{{ deck_cards.filter(e=>e.strength === 2).length
+                        }}枚</v-col
+                      >
+                      <v-col class="px-3 py-3"
+                        >{{ deck_cards.filter(e=>e.strength === 3).length
+                        }}枚</v-col
+                      >
+                      <v-col class="px-3 py-3"
+                        >{{ deck_cards.filter(e=>e.strength === 4).length
+                        }}枚</v-col
+                      >
+                    </v-row>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-expand-transition>
+            <!-- デッキカード一覧 -->
+            <v-row
+              class="dropzone bg-green-darken-4 overflow-y-auto"
+              style="max-height: 60vh"
+            >
+              <v-col
+                v-for="deck_card in deck_cards"
+                cols="auto"
+                class="pt-5 pb-0 px-1"
+                style="position: relative"
+              >
+                <img
+                  :src="`./img/${deck_card.id}.png`"
+                  class=""
+                  @click="open_card_detail(deck_card.id)"
+                  :width="options.deck_card_size"
+                />
+                <v-icon
+                  icon="mdi-close-circle-outline"
+                  class="icon-close cursor-pointer"
+                  @click="remove_card(deck_card.id)"
+                ></v-icon>
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="auto">
+                <v-select
+                  v-model="card_sort"
+                  :items="select_sort"
+                  label="並び順"
+                  return-object
+                ></v-select>
+              </v-col>
+              <!-- フィルターボタン -->
+              <v-col cols="auto">
+                <v-btn
+                  class="ma-2"
+                  variant="tonal"
+                  :append-icon="is_filter ? 'mdi-lightbulb-on-outline':'mdi-lightbulb-off'"
+                  @click="show_filter = !show_filter"
+                >
+                  フィルター
+                </v-btn>
+              </v-col>
+              <!-- シミュレーションボタン -->
+              <v-col cols="auto">
+                <v-btn
+                  class="ma-2"
+                  variant="tonal"
+                  @click="open_dialog_simulation()"
+                >
+                  シミュレーション
+                </v-btn>
+              </v-col>
+              <v-col cols="auto">
+                <v-btn class="ma-2" variant="tonal"> デッキコード入力 </v-btn>
+              </v-col>
+              <v-col cols="auto">
+                <v-btn class="ma-2" variant="tonal">
+                  インポート・エクスポート
+                </v-btn>
+              </v-col>
+            </v-row>
+            <!-- フィルター -->
+            <v-row>
+              <v-col>
+                <v-expand-transition>
+                  <v-row v-show="show_filter">
+                    <v-col cols="auto" class="px-0">
+                      <v-card class="mx-auto bg-secondary" variant="outlined">
+                        <v-card-title class="text-h6">コスト</v-card-title>
+                        <v-row>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              label="0"
+                              value="0"
+                              v-model="filters.costs"
+                            ></v-checkbox>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              label="1"
+                              value="1"
+                              v-model="filters.costs"
+                            ></v-checkbox>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              label="2"
+                              value="2"
+                              v-model="filters.costs"
+                            ></v-checkbox>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              label="3"
+                              value="3"
+                              v-model="filters.costs"
+                            ></v-checkbox>
+                          </v-col>
+                        </v-row>
+                      </v-card>
+                    </v-col>
+                    <v-col cols="auto" class="px-0">
+                      <v-card class="mx-auto bg-secondary" variant="outlined">
+                        <v-card-title class="text-h6">強度</v-card-title>
+                        <v-row>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              label="滅"
+                              value="0"
+                              v-model="filters.strengths"
+                            ></v-checkbox>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              label="1"
+                              value="1"
+                              v-model="filters.strengths"
+                            ></v-checkbox>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              label="2"
+                              value="2"
+                              v-model="filters.strengths"
+                            ></v-checkbox>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              label="3"
+                              value="3"
+                              v-model="filters.strengths"
+                            ></v-checkbox>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              label="4"
+                              value="4"
+                              v-model="filters.strengths"
+                            ></v-checkbox>
+                          </v-col>
+                        </v-row>
+                      </v-card>
+                    </v-col>
+                    <v-col cols="auto" class="px-0">
+                      <v-card class="mx-auto bg-secondary" variant="outlined">
+                        <v-card-title class="text-h6">技・呪文</v-card-title>
+                        <v-row>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              ref="art"
+                              label="技"
+                              value="1"
+                              v-model="filters.type"
+                            ></v-checkbox>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-checkbox
+                              label="呪文"
+                              value="2"
+                              v-model="filters.type"
+                            ></v-checkbox>
+                          </v-col>
+                        </v-row>
+                      </v-card>
+                    </v-col>
+                    <v-col cols="auto" class="px-0">
+                      <v-card class="mx-auto bg-secondary" variant="outlined">
+                        <v-card-title class="text-h6">タグ</v-card-title>
+                        <v-row justify="space-around">
+                          <v-col cols="auto">
+                            <v-chip-group
+                              selected-class="text-primary"
+                              v-model="filters.tags"
+                              multiple
+                              column
+                            >
+                              <v-chip
+                                v-for="tag in tags"
+                                :key="tag"
+                                :value="tag.value"
+                              >
+                                {{ tag.label }}
+                              </v-chip>
+                            </v-chip-group>
+                          </v-col>
+                        </v-row>
+                      </v-card>
+                    </v-col>
+                    <v-col cols="3" class="px-0 w-20">
+                      <v-card class="bg-secondary" variant="outlined">
+                        <v-card-title class="text-h6">検索</v-card-title>
+                        <v-row>
+                          <v-col>
+                            <v-text-field
+                              variant="outlined"
+                              v-model="filters.word"
+                            ></v-text-field>
+                          </v-col>
+                        </v-row>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </v-expand-transition>
+              </v-col>
+            </v-row>
+            <!-- カード一覧 -->
+            <v-row>
+              <template v-for="card in sort_cards">
+                <v-col cols="auto" class="pa-1" v-show="filter(card)">
+                  <div
+                    :class="{draggable:is_darg_card(card.id)}"
+                    :data-id="card.id"
+                    @click="open_card_detail(card.id)"
+                  >
+                    <img
+                      :src="`./img/${card.id}.png`"
+                      class="card-img"
+                      :class="{'bg-bark':!is_darg_card(card.id)}"
+                      :width="options.card_size"
+                    />
+                  </div>
+                </v-col>
+              </template>
+            </v-row>
+            <!-- ダイアログ -->
+            <!-- 詳細ダイアログ -->
+            <v-dialog v-model="show_dialog_detail" width="auto">
+              <v-card max-width="500">
+                <img :src="`./img/${detail_card_id}.png`" />
+                <template v-slot:actions>
+                  <v-btn
+                    class="ms-auto"
+                    text="閉じる"
+                    @click="show_dialog_detail = false"
+                  ></v-btn>
+                </template>
+              </v-card>
+            </v-dialog>
+            <!-- シミュレーションダイアログ -->
+            <v-dialog v-model="show_dialog_simulation" width="100%">
+              <v-card>
+                <v-row
+                  class="bg-green-darken-4 ma-0"
+                  justify="center"
+                  style="width: 100%"
+                >
+                  <v-col
+                    v-for="i in num_simulation_card"
+                    cols="auto"
+                    class="pa-1"
+                  >
+                    <img
+                      :src="`./img/${random_simulation_cards[i-1].id}.png`"
+                      class=""
+                      @click="open_card_detail(random_simulation_cards[i-1].id)"
+                      :width="options.deck_card_size"
+                    />
+                  </v-col>
+                </v-row>
+                <template v-slot:actions>
+                  <v-btn
+                    class=""
+                    text="マリガン"
+                    @click="shuffle_card()"
+                  ></v-btn>
+                  <v-btn
+                    class=""
+                    text="ドロー"
+                    @click="num_simulation_card++"
+                    :disabled="num_simulation_card >= random_simulation_cards.length"
+                  ></v-btn>
+                  <v-btn
+                    class="ms-auto"
+                    text="閉じる"
+                    @click="show_dialog_simulation = false"
+                  ></v-btn>
+                </template>
+              </v-card>
+            </v-dialog>
+          </v-container>
+        </v-main>
+        <div></div>
+      </v-app>
+    </div>
+
+    <script>
+      const { createApp } = Vue;
+      const { createVuetify } = Vuetify;
+      const vuetify = createVuetify({
+        theme: {
+          defaultTheme: "dark",
+        },
+      });
+
+      createApp({
+        data() {
+          return {
+            show_info: false,
+            show_option: false,
+            show_filter: false,
+            show_dialog_detail: false,
+            show_dialog_simulation: false,
+            show_snackbar_copy: false,
+            num_simulation_card: 4,
+            random_simulation_cards: [],
+            is_darg: false,
+            detail_card_id: "",
+            deck_code: "",
+            is_copy: true,
+            options: {
+              deck_card_size: 130,
+              card_size: 180,
+            },
+            select_deck: { name: "", index: null },
+            select_sort: [
+              { title: "デフォルト", value: "no" },
+              { title: "コスト", value: "cost" },
+              { title: "強度", value: "strength" },
+            ],
+            deck_card_sort: { title: "デフォルト", value: "no" },
+            card_sort: { title: "デフォルト", value: "no" },
+            filters: {
+              costs: [],
+              strengths: [],
+              type: "",
+              tags: [],
+              word: "",
+            },
+            tags: [
+              {
+                label: "ドロー",
+                value: 1,
+              },
+              {
+                label: "連鎖",
+                value: 2,
+              },
+              {
+                label: "構え",
+                value: 3,
+              },
+              {
+                label: "追加攻撃",
+                value: 4,
+              },
+              {
+                label: "神技",
+                value: 5,
+              },
+              {
+                label: "魔力",
+                value: 6,
+              },
+              {
+                label: "氷撃",
+                value: 7,
+              },
+              {
+                label: "秘術",
+                value: 8,
+              },
+              {
+                label: "残映ターン",
+                value: 9,
+              },
+              {
+                label: "相手ターン使用",
+                value: 10,
+              },
+              {
+                label: "強度上げる",
+                value: 11,
+              },
+              {
+                label: "強度下げる",
+                value: 12,
+              },
+              {
+                label: "発動可能",
+                value: 13,
+              },
+              {
+                label: "攻撃喰らわせる",
+                value: 14,
+              },
+              {
+                label: "消耗しない",
+                value: 15,
+              },
+              {
+                label: "消耗させる",
+                value: 16,
+              },
+              {
+                label: "全てにヒット",
+                value: 17,
+              },
+              {
+                label: "体力2つ消費",
+                value: 18,
+              },
+              {
+                label: "体力消費",
+                value: 19,
+              },
+              {
+                label: "いつでも使用",
+                value: 20,
+              },
+              {
+                label: "ゲージ獲得",
+                value: 21,
+              },
+              {
+                label: "使用済サーチ",
+                value: 22,
+              },
+              {
+                label: "手札に戻す",
+                value: 23,
+              },
+              {
+                label: "重ねる",
+                value: 24,
+              },
+              {
+                label: "回転",
+                value: 25,
+              },
+              {
+                label: "手前習得",
+                value: 26,
+              },
+              {
+                label: "体力回復",
+                value: 27,
+              },
+              {
+                label: "発動禁止",
+                value: 28,
+              },
+              {
+                label: "手札捨てる",
+                value: 29,
+              },
+            ],
+            decks: [],
+            cards: [
+              {
+                id: "デッキ1カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 0,
+              },
+              {
+                id: "デッキ1カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 2,
+              },
+              {
+                id: "デッキ1カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 4,
+              },
+              {
+                id: "デッキ1カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 6,
+              },
+              {
+                id: "デッキ1カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 8,
+              },
+              {
+                id: "デッキ1カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 10,
+              },
+              {
+                id: "デッキ1カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 12,
+              },
+              {
+                id: "デッキ1カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 14,
+              },
+              {
+                id: "デッキ1カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 16,
+              },
+              {
+                id: "デッキ1カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 18,
+              },
+              {
+                id: "デッキ1カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 20,
+              },
+              {
+                id: "デッキ2カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 22,
+              },
+              {
+                id: "デッキ2カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 24,
+              },
+              {
+                id: "デッキ2カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 26,
+              },
+              {
+                id: "デッキ2カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 28,
+              },
+              {
+                id: "デッキ2カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 30,
+              },
+              {
+                id: "デッキ2カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 32,
+              },
+              {
+                id: "デッキ2カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 34,
+              },
+              {
+                id: "デッキ2カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 36,
+              },
+              {
+                id: "デッキ2カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 38,
+              },
+              {
+                id: "デッキ2カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 40,
+              },
+              {
+                id: "デッキ2カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 42,
+              },
+              {
+                id: "デッキ3カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 44,
+              },
+              {
+                id: "デッキ3カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 46,
+              },
+              {
+                id: "デッキ3カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 48,
+              },
+              {
+                id: "デッキ3カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 50,
+              },
+              {
+                id: "デッキ3カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 52,
+              },
+              {
+                id: "デッキ3カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 54,
+              },
+              {
+                id: "デッキ3カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 56,
+              },
+              {
+                id: "デッキ3カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 58,
+              },
+              {
+                id: "デッキ3カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 60,
+              },
+              {
+                id: "デッキ3カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 62,
+              },
+              {
+                id: "デッキ3カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 64,
+              },
+              {
+                id: "デッキ4カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 66,
+              },
+              {
+                id: "デッキ4カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 68,
+              },
+              {
+                id: "デッキ4カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 70,
+              },
+              {
+                id: "デッキ4カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 72,
+              },
+              {
+                id: "デッキ4カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 74,
+              },
+              {
+                id: "デッキ4カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 76,
+              },
+              {
+                id: "デッキ4カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 78,
+              },
+              {
+                id: "デッキ4カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 80,
+              },
+              {
+                id: "デッキ4カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 82,
+              },
+              {
+                id: "デッキ4カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 84,
+              },
+              {
+                id: "デッキ4カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 86,
+              },
+              {
+                id: "デッキ5カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 88,
+              },
+              {
+                id: "デッキ5カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 90,
+              },
+              {
+                id: "デッキ5カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 92,
+              },
+              {
+                id: "デッキ5カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 94,
+              },
+              {
+                id: "デッキ5カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 96,
+              },
+              {
+                id: "デッキ5カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 98,
+              },
+              {
+                id: "デッキ5カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 100,
+              },
+              {
+                id: "デッキ5カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 102,
+              },
+              {
+                id: "デッキ5カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 104,
+              },
+              {
+                id: "デッキ5カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 106,
+              },
+              {
+                id: "デッキ5カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 108,
+              },
+              {
+                id: "デッキ6カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 110,
+              },
+              {
+                id: "デッキ6カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 112,
+              },
+              {
+                id: "デッキ6カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 114,
+              },
+              {
+                id: "デッキ6カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 116,
+              },
+              {
+                id: "デッキ6カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 118,
+              },
+              {
+                id: "デッキ6カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 120,
+              },
+              {
+                id: "デッキ6カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 122,
+              },
+              {
+                id: "デッキ6カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 124,
+              },
+              {
+                id: "デッキ6カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 126,
+              },
+              {
+                id: "デッキ6カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 128,
+              },
+              {
+                id: "デッキ6カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 130,
+              },
+              {
+                id: "デッキ7カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 132,
+              },
+              {
+                id: "デッキ7カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 134,
+              },
+              {
+                id: "デッキ7カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 136,
+              },
+              {
+                id: "デッキ7カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 138,
+              },
+              {
+                id: "デッキ7カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 140,
+              },
+              {
+                id: "デッキ7カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 142,
+              },
+              {
+                id: "デッキ7カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 144,
+              },
+              {
+                id: "デッキ7カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 146,
+              },
+              {
+                id: "デッキ7カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 148,
+              },
+              {
+                id: "デッキ7カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 150,
+              },
+              {
+                id: "デッキ7カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 152,
+              },
+              {
+                id: "デッキ8カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 154,
+              },
+              {
+                id: "デッキ8カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 156,
+              },
+              {
+                id: "デッキ8カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 158,
+              },
+              {
+                id: "デッキ8カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 160,
+              },
+              {
+                id: "デッキ8カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 162,
+              },
+              {
+                id: "デッキ8カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 164,
+              },
+              {
+                id: "デッキ8カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 166,
+              },
+              {
+                id: "デッキ8カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 168,
+              },
+              {
+                id: "デッキ8カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 170,
+              },
+              {
+                id: "デッキ8カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 172,
+              },
+              {
+                id: "デッキ8カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 174,
+              },
+              {
+                id: "デッキEX1カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 176,
+              },
+              {
+                id: "デッキEX1カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 178,
+              },
+              {
+                id: "デッキEX1カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 180,
+              },
+              {
+                id: "デッキEX1カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 182,
+              },
+              {
+                id: "デッキEX1カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 184,
+              },
+              {
+                id: "デッキEX1カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 186,
+              },
+              {
+                id: "デッキEX1カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 188,
+              },
+              {
+                id: "デッキEX1カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 190,
+              },
+              {
+                id: "デッキEX1カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 192,
+              },
+              {
+                id: "デッキEX1カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 194,
+              },
+              {
+                id: "デッキEX1カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 196,
+              },
+              {
+                id: "デッキEX2カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 198,
+              },
+              {
+                id: "デッキEX2カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 200,
+              },
+              {
+                id: "デッキEX2カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 202,
+              },
+              {
+                id: "デッキEX2カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 204,
+              },
+              {
+                id: "デッキEX2カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 206,
+              },
+              {
+                id: "デッキEX2カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 208,
+              },
+              {
+                id: "デッキEX2カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 210,
+              },
+              {
+                id: "デッキEX2カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 212,
+              },
+              {
+                id: "デッキEX2カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 214,
+              },
+              {
+                id: "デッキEX2カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 216,
+              },
+              {
+                id: "デッキEX2カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 218,
+              },
+              {
+                id: "デッキEX3カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 220,
+              },
+              {
+                id: "デッキEX3カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 222,
+              },
+              {
+                id: "デッキEX3カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 224,
+              },
+              {
+                id: "デッキEX3カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 226,
+              },
+              {
+                id: "デッキEX3カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 228,
+              },
+              {
+                id: "デッキEX3カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 230,
+              },
+              {
+                id: "デッキEX3カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 232,
+              },
+              {
+                id: "デッキEX3カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 234,
+              },
+              {
+                id: "デッキEX3カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 236,
+              },
+              {
+                id: "デッキEX3カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 238,
+              },
+              {
+                id: "デッキEX3カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 240,
+              },
+              {
+                id: "デッキEX4カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 242,
+              },
+              {
+                id: "デッキEX4カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 244,
+              },
+              {
+                id: "デッキEX4カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 246,
+              },
+              {
+                id: "デッキEX4カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 248,
+              },
+              {
+                id: "デッキEX4カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 250,
+              },
+              {
+                id: "デッキEX4カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 252,
+              },
+              {
+                id: "デッキEX4カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 254,
+              },
+              {
+                id: "デッキEX4カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 256,
+              },
+              {
+                id: "デッキEX4カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 258,
+              },
+              {
+                id: "デッキEX5カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 260,
+              },
+              {
+                id: "デッキEX5カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 262,
+              },
+              {
+                id: "デッキEX5カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 264,
+              },
+              {
+                id: "デッキEX5カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 266,
+              },
+              {
+                id: "デッキEX5カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 268,
+              },
+              {
+                id: "デッキEX5カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 270,
+              },
+              {
+                id: "デッキEX5カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 272,
+              },
+              {
+                id: "デッキEX5カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 274,
+              },
+              {
+                id: "デッキEX5カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 276,
+              },
+              {
+                id: "デッキEX5カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 278,
+              },
+              {
+                id: "デッキEX5カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 280,
+              },
+              {
+                id: "デッキEX6カード1",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 282,
+              },
+              {
+                id: "デッキEX6カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 284,
+              },
+              {
+                id: "デッキEX6カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 286,
+              },
+              {
+                id: "デッキEX6カード4",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 288,
+              },
+              {
+                id: "デッキEX6カード5",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 290,
+              },
+              {
+                id: "デッキEX6カード6",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 292,
+              },
+              {
+                id: "デッキEX6カード7",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 294,
+              },
+              {
+                id: "デッキEX6カード8",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 296,
+              },
+              {
+                id: "デッキEX6カード9",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 298,
+              },
+              {
+                id: "デッキEX6カード10",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 300,
+              },
+              {
+                id: "デッキEX6カード11",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 302,
+              },
+              {
+                id: "デッキEX7カード2",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 304,
+              },
+              {
+                id: "デッキEX7カード3",
+                name: "暴虐強風",
+                cost: 2,
+                strength: 4,
+                effect: "",
+                tags: [13, 15],
+                no: 306,
+              },
+            ],
+          };
+        },
+        created() {
+          if (localStorage.deck_list) {
+            this.decks = JSON.parse(localStorage.deck_list);
+          }
+          if (!this.decks.length) {
+            this.decks = [
+              {
+                name: "",
+                cards: [],
+              },
+            ];
+          }
+          this.select_deck.index = 0;
+          this.select_deck.name = this.decks[0].name;
+
+          // const channel = new BroadcastChannel("app-data");
+          // channel.addEventListener("message", (event) => {
+          //   console.log(event.data);
+          // });
+
+          // channel.postMessage({ test: 123 });
+        },
+        mounted() {
+          // localStorage.saveKey = "value";
+          // console.log(localStorage.decks);
+          const position = { x: 0, y: 0 };
+
+          //   ドラッグイベント
+          interact(".draggable").draggable({
+            listeners: {
+              start: (event) => {
+                event.target.style.zIndex = 20;
+                this.is_darg = true;
+              },
+              move: (event) => {
+                position.x += event.dx;
+                position.y += event.dy;
+
+                event.target.style.transform = `translate(${position.x}px, ${position.y}px)`;
+              },
+              end: (event) => {
+                event.target.style.transform = "";
+                event.target.style.zIndex = 0;
+                position.x = 0;
+                position.y = 0;
+              },
+            },
+          });
+
+          //   ドロップイベント
+          interact(".dropzone").dropzone({
+            // only accept elements matching this CSS selector
+            // accept: "#yes-drop",
+            // Require a 75% element overlap for a drop to be possible
+            overlap: 0.1,
+
+            // listen for drop related events:
+
+            ondropactivate: function (event) {
+              // add active dropzone feedback
+              event.target.classList.add("drop-active");
+            },
+            ondragenter: function (event) {
+              var draggableElement = event.relatedTarget;
+              var dropzoneElement = event.target;
+
+              // feedback the possibility of a drop
+              dropzoneElement.classList.add("drop-target");
+              draggableElement.classList.add("can-drop");
+              // draggableElement.textContent = "Dragged in";
+            },
+            ondragleave: function (event) {
+              // remove the drop feedback style
+              event.target.classList.remove("drop-target");
+              event.relatedTarget.classList.remove("can-drop");
+              // event.relatedTarget.textContent = "Dragged out";
+            },
+            ondrop: (event) => {
+              // event.relatedTarget.textContent = "Dropped";
+              this.add_card(event.relatedTarget.dataset.id);
+            },
+            ondropdeactivate: function (event) {
+              // remove active dropzone feedback
+              event.target.classList.remove("drop-active");
+              event.target.classList.remove("drop-target");
+            },
+          });
+        },
+        computed: {
+          CARD_TYPE() {
+            return {
+              ART: "1",
+              SPELL: "2",
+            };
+          },
+          // デッキカードの情報取得
+          deck_cards() {
+            if (!this.decks) return [];
+
+            cards = [];
+
+            for (const card of this.decks[this.select_deck.index].cards) {
+              const card_index = this.cards.findIndex((e) => e.id == card.id);
+              cards.push({
+                ...this.cards[card_index],
+                ...{ index: card_index },
+              });
+            }
+            return cards
+              .sort((a, b) => a.index - b.index)
+              .sort(
+                (a, b) =>
+                  a[this.deck_card_sort.value] - b[this.deck_card_sort.value]
+              );
+          },
+          sort_cards() {
+            return this.cards.sort(
+              (a, b) => a[this.card_sort.value] - b[this.card_sort.value]
+            );
+          },
+          // デッキセレクトボックス項目
+          select_decks() {
+            const items = [];
+            for (const key in this.decks) {
+              items.push({
+                index: key,
+                name: this.decks[key].name,
+              });
+            }
+            return items;
+          },
+          is_filter() {
+            for (const key of Object.keys(this.filters)) {
+              if (this.filters[key].length) return true;
+            }
+            return false;
+          },
+        },
+        methods: {
+          dd(data) {
+            console.log(data);
+          },
+          // デッキにカード追加
+          add_card(card_id) {
+            if (
+              this.decks[this.select_deck.index].cards.filter(
+                (e) => e.id === card_id
+              ).length >= 2
+            )
+              return;
+
+            this.decks[this.select_deck.index].cards.push({ id: card_id });
+            this.update_deck_code();
+          },
+          // デッキからカードを取り除く
+          remove_card(card_id) {
+            const deck_index = this.decks[
+              this.select_deck.index
+            ].cards.findIndex((e) => e.id == card_id);
+            this.decks[this.select_deck.index].cards.splice(deck_index, 1);
+            this.update_deck_code();
+          },
+          // デッキの名前更新
+          update_deck_name() {
+            this.select_deck.name = this.decks[this.select_deck.index].name;
+          },
+          // デッキ追加
+          add_deck() {
+            this.decks.push({ name: "", cards: [] });
+            this.select_deck.name = "";
+            this.select_deck.index = this.decks.length - 1;
+            this.update_deck_code();
+          },
+          // フィルターで表示ならtrue 非表示ならfalse
+          filter(card) {
+            if (!this.is_filter) return true;
+            // コスト
+            if (this.filters.costs.length) {
+              if (!this.filters.costs.includes(card.cost.toString()))
+                return false;
+            }
+            // 強度
+            if (this.filters.strengths.length) {
+              if (card.strength === null) return false;
+              if (!this.filters.strengths.includes(card.strength.toString()))
+                return false;
+            }
+            // 技・呪文
+            if (this.filters.type) {
+              if (
+                this.filters.type === this.CARD_TYPE.ART &&
+                card.strength === null
+              ) {
+                return false;
+              }
+              if (
+                this.filters.type === this.CARD_TYPE.SPELL &&
+                card.strength !== null
+              ) {
+                return false;
+              }
+            }
+            // タグ
+            if (this.filters.tags.length) {
+              const match_num = card.tags.filter((tag) =>
+                this.filters.tags.includes(tag)
+              ).length;
+              if (match_num !== this.filters.tags.length) return false;
+            }
+            // 検索
+            if (this.filters.word) {
+              if (
+                card.name.indexOf(this.filters.word) === -1 &&
+                card.effect.indexOf(this.filters.word) === -1
+              ) {
+                return false;
+              }
+            }
+
+            return true;
+          },
+          open_card_detail(id) {
+            if (this.is_darg) {
+              this.is_darg = false;
+              return;
+            }
+            this.detail_card_id = id;
+            this.show_dialog_detail = true;
+          },
+          // デッキ情報をローカルストレージに保存
+          save() {
+            localStorage.deck_list = JSON.stringify(this.decks);
+          },
+          // デッキ削除
+          delete_deck() {
+            this.decks.splice(this.select_deck.index, 1);
+            if (this.decks.length == 0) {
+              this.add_deck();
+            } else {
+              this.select_deck.index = 0;
+              this.select_deck.name = this.decks[0].name;
+            }
+          },
+          // カードが何枚採用されてるか
+          num_deck_card(card_id) {
+            return this.deck_cards.filter((card) => card.id === card_id).length;
+          },
+          // カードがドラッグ出来るか
+          is_darg_card(card_id) {
+            return (
+              this.num_deck_card(card_id) < 2 && this.deck_cards.length < 20
+            );
+          },
+          // デッキコード更新
+          update_deck_code() {
+            if (this.deck_cards.length !== 20) {
+              this.deck_code = "";
+              return;
+            }
+
+            const card_nos = [];
+            const deck_cards = this.deck_cards.sort((a, b) => a.no - b.no);
+            for (const card of deck_cards) {
+              if (card_nos.includes(card.no)) {
+                card_nos.push(card.no + 1);
+              } else {
+                card_nos.push(card.no);
+              }
+            }
+            card_nos.push(this.is_copy ? 0 : 1);
+            this.deck_code = card_nos.join(",");
+          },
+          // シミュレーションデッキをシャッフル
+          shuffle_card() {
+            this.num_simulation_card = 4;
+            const cards = [...this.deck_cards];
+            const random_cards = [];
+            while (cards.length > 0) {
+              random_cards.push(
+                cards.splice(Math.floor(Math.random() * cards.length), 1)[0]
+              );
+            }
+            this.random_simulation_cards = random_cards;
+          },
+          // シミュレーションダイアログをオープン
+          open_dialog_simulation() {
+            this.shuffle_card();
+            this.show_dialog_simulation = true;
+          },
+          copy_deck_code() {
+            if (!this.deck_code) return;
+            navigator.clipboard.writeText(this.deck_code);
+            this.show_snackbar_copy = true;
+          },
+        },
+      })
+        .use(vuetify)
+        .mount("#app");
+    </script>
+    <style>
+      .card {
+        display: inline-block;
+        width: 150px;
+        padding: 2em 0.5em;
+        /* margin: 1rem 0 0 1rem; */
+
+        color: #fff;
+        background-color: #29e;
+        border: solid 2px #fff;
+
+        touch-action: none;
+        user-select: none;
+        transform: translate(0px, 0px);
+
+        transition: background-color 0.3s;
+      }
+
+      .draggable {
+        touch-action: none;
+        user-select: none;
+        position: relative;
+      }
+
+      .card-img {
+        /* z-index: 999; */
+        position: relative;
+      }
+
+      .bg-bark {
+        opacity: 0.6;
+      }
+
+      .deck-img {
+        width: 120px;
+
+        /* position: relative; */
+      }
+
+      .icon-close {
+        position: absolute;
+        top: -0px;
+        left: 0;
+        /* display: flex; */
+      }
+
+      #outer-dropzone {
+        height: 140px;
+      }
+      .dropzone {
+        /* background-color: #bfe4ff; */
+
+        /* width: 100%; */
+        min-height: 200px;
+        transition: background-color 0.3s;
+
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .drop-active {
+        border-color: #aaa;
+      }
+
+      .drop-target {
+        background-color: #29e;
+        border-color: #fff;
+        border-style: solid;
+      }
+
+      .drag-drop.can-drop {
+        color: #000;
+        background-color: #4e4;
+      }
+    </style>
+  </body>
+</html>
