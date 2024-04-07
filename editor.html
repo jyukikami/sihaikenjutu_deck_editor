@@ -51,6 +51,11 @@
                 </v-btn>
               </v-col>
               <v-col cols="auto">
+                <v-btn class="ma-2" variant="tonal" @click="copy_deck()">
+                  デッキコピー
+                </v-btn>
+              </v-col>
+              <v-col cols="auto">
                 <v-btn class="ma-2" variant="tonal" @click="delete_deck()">
                   デッキ削除
                 </v-btn>
@@ -58,11 +63,6 @@
               <v-col cols="auto">
                 <v-btn class="ma-2" variant="tonal" @click="save()">
                   全て保存
-                </v-btn>
-              </v-col>
-              <v-col cols="auto">
-                <v-btn class="ma-2" variant="tonal" @click="shuffle_card()">
-                  テスト
                 </v-btn>
               </v-col>
               <v-col cols="auto" class="ms-auto">
@@ -152,6 +152,7 @@
                   label="デッキコード"
                   variant="outlined"
                   prepend-inner-icon="mdi-content-copy"
+                  :error-messages="error_message.deck"
                   v-model="deck_code"
                   readonly
                   @click="copy_deck_code()"
@@ -317,17 +318,27 @@
                 </v-btn>
               </v-col>
               <v-col cols="auto">
-                <v-btn class="ma-2" variant="tonal"> デッキコード入力 </v-btn>
+                <v-btn
+                  class="ma-2"
+                  variant="tonal"
+                  @click="show_input_deck_code = !show_input_deck_code"
+                >
+                  デッキコード入力
+                </v-btn>
               </v-col>
               <v-col cols="auto">
-                <v-btn class="ma-2" variant="tonal">
+                <v-btn
+                  class="ma-2"
+                  variant="tonal"
+                  @click="show_import_export = !show_import_export"
+                >
                   インポート・エクスポート
                 </v-btn>
               </v-col>
             </v-row>
-            <!-- フィルター -->
             <v-row>
               <v-col>
+                <!-- フィルター -->
                 <v-expand-transition>
                   <v-row v-show="show_filter">
                     <v-col cols="auto" class="px-0">
@@ -467,6 +478,99 @@
                     </v-col>
                   </v-row>
                 </v-expand-transition>
+                <!-- デッキコード入力 -->
+                <v-expand-transition>
+                  <v-row v-show="show_input_deck_code">
+                    <v-col cols="10" class="px-0">
+                      <v-card class="mx-auto" variant="outlined">
+                        <v-card-title class="text-h6"
+                          >デッキコードからデッキ復元</v-card-title
+                        >
+                        <v-row>
+                          <v-col cols="12">
+                            <v-text-field
+                              variant="outlined"
+                              label="デッキコード"
+                              :error-messages="error_message.deck_code"
+                              v-model="input_deck_code"
+                            ></v-text-field>
+                          </v-col>
+                        </v-row>
+                        <v-row>
+                          <v-col cols="auto">
+                            <v-btn
+                              class="ma-2"
+                              variant="tonal"
+                              @click="decode_deck_code(false)"
+                            >
+                              デッキ上書き
+                            </v-btn>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-btn
+                              class="ma-2"
+                              variant="tonal"
+                              @click="decode_deck_code(true)"
+                            >
+                              新規デッキ
+                            </v-btn>
+                          </v-col>
+                        </v-row>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </v-expand-transition>
+                <v-expand-transition>
+                  <v-row v-show="show_import_export">
+                    <v-col cols="10" class="px-0">
+                      <v-card class="mx-auto" variant="outlined">
+                        <v-card-title class="text-h6"
+                          >インポート・エクスポート</v-card-title
+                        >
+                        <v-row>
+                          <v-col cols="auto">
+                            <v-btn
+                              class="ma-2"
+                              variant="tonal"
+                              @click="export_decks()"
+                            >
+                              エクスポート
+                            </v-btn>
+                          </v-col>
+                        </v-row>
+                        <v-row>
+                          <v-col cols="12">
+                            <v-text-field
+                              variant="outlined"
+                              :error-messages="error_message.import_export"
+                              v-model="input_import_export"
+                            ></v-text-field>
+                          </v-col>
+                        </v-row>
+                        <v-row>
+                          <v-col cols="auto">
+                            <v-btn
+                              class="ma-2"
+                              variant="tonal"
+                              @click="import_decks(false)"
+                            >
+                              データ上書き
+                            </v-btn>
+                          </v-col>
+                          <v-col cols="auto">
+                            <v-btn
+                              class="ma-2"
+                              variant="tonal"
+                              @click="import_decks(true)"
+                            >
+                              新規で追加
+                            </v-btn>
+                          </v-col>
+                        </v-row>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </v-expand-transition>
               </v-col>
             </v-row>
             <!-- カード一覧 -->
@@ -567,12 +671,21 @@
             show_dialog_detail: false,
             show_dialog_simulation: false,
             show_snackbar_copy: false,
+            show_input_deck_code: false,
+            show_import_export: false,
             num_simulation_card: 4,
             random_simulation_cards: [],
             is_darg: false,
             detail_card_id: "",
             deck_code: "",
+            input_deck_code: "",
+            input_import_export: "",
             is_copy: true,
+            error_message: {
+              deck: "",
+              deck_code: "",
+              import_export: "",
+            },
             options: {
               deck_card_size: 130,
               card_size: 180,
@@ -2108,7 +2221,7 @@
           if (!this.decks.length) {
             this.decks = [
               {
-                name: "",
+                name: "新規デッキ",
                 cards: [],
               },
             ];
@@ -2269,8 +2382,8 @@
           },
           // デッキ追加
           add_deck() {
-            this.decks.push({ name: "", cards: [] });
-            this.select_deck.name = "";
+            this.decks.push({ name: "新規デッキ", cards: [] });
+            this.select_deck.name = "新規デッキ";
             this.select_deck.index = this.decks.length - 1;
             this.update_deck_code();
           },
@@ -2356,6 +2469,7 @@
           },
           // デッキコード更新
           update_deck_code() {
+            this.error_message.deck = "";
             if (this.deck_cards.length !== 20) {
               this.deck_code = "";
               return;
@@ -2369,6 +2483,10 @@
               } else {
                 card_nos.push(card.no);
               }
+            }
+            if (new Set(card_nos).size !== card_nos.length) {
+              this.error_message.deck = "デッキコードエラー、カードの重複";
+              return;
             }
             card_nos.push(this.is_copy ? 0 : 1);
             this.deck_code = card_nos.join(",");
@@ -2390,10 +2508,83 @@
             this.shuffle_card();
             this.show_dialog_simulation = true;
           },
+          // デッキコードをクリップボードにコピー
           copy_deck_code() {
             if (!this.deck_code) return;
             navigator.clipboard.writeText(this.deck_code);
             this.show_snackbar_copy = true;
+          },
+          // 入力されたデッキコードからデッキを復元
+          decode_deck_code(is_new_deck) {
+            this.error_message.deck_code = "";
+            if (!this.input_deck_code) return;
+            const nos = this.input_deck_code.split(",").map((e) => Number(e));
+            if (nos.length !== 21) {
+              this.error_message.deck_code = "読み取りエラー";
+              return;
+            }
+            nos.pop();
+            if (new Set(nos).size !== nos.length) {
+              this.error_message.deck_code = "読み取りエラー、カードの重複";
+              return;
+            }
+            const ids = [];
+            for (let no of nos) {
+              if (no % 2 === 1) {
+                no--;
+              }
+              const card_index = this.cards.findIndex((e) => e.no == no);
+              if (card_index === -1) {
+                this.error_message.deck_code =
+                  "読み取りエラー、対象カードが見つかりません";
+                return;
+              }
+              ids.push({ id: this.cards[card_index].id });
+            }
+            if (is_new_deck) {
+              this.decks.push({ name: "新規デッキ", cards: ids });
+              this.select_deck.name = "新規デッキ";
+              this.select_deck.index = this.decks.length - 1;
+            } else {
+              this.decks[this.select_deck.index].cards = ids;
+            }
+            this.deck_code = this.input_deck_code;
+            this.input_deck_code = "";
+            this.show_input_deck_code = false;
+          },
+          // デッキコピー
+          copy_deck() {
+            this.decks.push({
+              name: "新規デッキ",
+              cards: [...this.decks[this.select_deck.index].cards],
+            });
+            this.select_deck.name = "新規デッキ";
+            this.select_deck.index = this.decks.length - 1;
+          },
+          // 全てのデッキ情報をエクスポート
+          export_decks() {
+            this.input_import_export = JSON.stringify(this.decks);
+          },
+          // デッキ情報をインポート
+          import_decks(is_add_deck) {
+            this.error_message.import_export = "";
+            try {
+              if (is_add_deck) {
+                this.decks = [
+                  ...this.decks,
+                  ...JSON.parse(this.input_import_export),
+                ];
+              } else {
+                this.decks = JSON.parse(this.input_import_export);
+              }
+              this.select_deck.index = 0;
+              this.select_deck.name = this.decks[0].name;
+
+              this.show_import_export = false;
+              this.input_import_export = "";
+            } catch (error) {
+              this.error_message.import_export = "読み込みエラー";
+            }
           },
         },
       })
