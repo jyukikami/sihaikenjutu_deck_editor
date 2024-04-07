@@ -595,8 +595,8 @@
             <!-- ダイアログ -->
             <!-- 詳細ダイアログ -->
             <v-dialog v-model="show_dialog_detail" width="auto">
-              <v-card max-width="500">
-                <img :src="`./img/${detail_card_id}.png`" />
+              <v-card>
+                <img class="card-detail" :src="`./img/${detail_card_id}.png`" />
                 <template v-slot:actions>
                   <v-btn
                     class="ms-auto"
@@ -2618,6 +2618,10 @@
       .card-img {
         /* z-index: 999; */
         position: relative;
+      }
+
+      .card-detail {
+        height: 80vh;
       }
 
       .bg-bark {
