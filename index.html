@@ -88,13 +88,27 @@
                     </v-row>
                     <v-divider></v-divider>
                     <v-row>
-                      <v-col cols="3">
+                      <v-col cols="4">
                         <p>カードサイズ</p>
                       </v-col>
                       <v-col>
                         <v-slider
                           v-model="options.deck_card_size"
                           max="500"
+                          min="20"
+                          thumb-label
+                        ></v-slider>
+                      </v-col>
+                    </v-row>
+                    <v-divider></v-divider>
+                    <v-row>
+                      <v-col cols="4">
+                        <p>デッキゾーン高さ</p>
+                      </v-col>
+                      <v-col>
+                        <v-slider
+                          v-model="options.dropzone_max_height"
+                          max="100"
                           min="20"
                           thumb-label
                         ></v-slider>
@@ -111,7 +125,7 @@
                     </v-row>
                     <v-divider></v-divider>
                     <v-row>
-                      <v-col cols="3">
+                      <v-col cols="4">
                         <p>カードサイズ</p>
                       </v-col>
                       <v-col>
@@ -146,6 +160,14 @@
                   label="並び順"
                   return-object
                 ></v-select>
+              </v-col>
+              <v-col cols="auto">
+                <v-switch
+                  v-model="is_over_card"
+                  :label="is_over_card ? '同名重ね' : '同名表示'"
+                  @update:model-value="update_deck_code()"
+                  inset
+                ></v-switch>
               </v-col>
               <v-col>
                 <v-text-field
@@ -261,18 +283,33 @@
                     </v-row>
                   </v-card>
                 </v-col>
+                <v-col cols="auto">
+                  <v-card class="mx-auto bg-grey-darken-3" variant="outlined">
+                    <v-card-title class="text-h6 text-center"
+                      >合計枚数</v-card-title
+                    >
+                    <v-divider></v-divider>
+
+                    <v-row>
+                      <v-col class="px-3 py-3 text-center">
+                        {{ deck_cards.length }} / 20
+                      </v-col>
+                    </v-row>
+                  </v-card>
+                </v-col>
               </v-row>
             </v-expand-transition>
             <!-- デッキカード一覧 -->
             <v-row
               class="dropzone bg-green-darken-4 overflow-y-auto"
-              style="max-height: 60vh"
+              :style="{'max-height': options.dropzone_max_height + 'vh'}"
             >
               <v-col
-                v-for="deck_card in deck_cards"
+                v-for="deck_card in is_over_card ? deduplication_deck_cards : deck_cards"
                 cols="auto"
                 class="pt-5 pb-0 px-1"
                 style="position: relative"
+                @click.right.prevent="remove_card(deck_card.id)"
               >
                 <img
                   :src="`./img/${deck_card.id}.png`"
@@ -285,8 +322,14 @@
                   class="icon-close cursor-pointer"
                   @click="remove_card(deck_card.id)"
                 ></v-icon>
+                <v-icon
+                  v-show="is_over_card && num_deck_card(deck_card.id) === 2"
+                  icon="mdi-numeric-2-circle-outline"
+                  class="icon-numeric-2 cursor-pointer"
+                ></v-icon>
               </v-col>
             </v-row>
+            <!-- カード一覧メニューボタン -->
             <v-row>
               <v-col cols="auto">
                 <v-select
@@ -336,6 +379,7 @@
                 </v-btn>
               </v-col>
             </v-row>
+            <!-- カード一覧メニュー -->
             <v-row>
               <v-col>
                 <!-- フィルター -->
@@ -581,6 +625,7 @@
                     :class="{draggable:is_darg_card(card.id)}"
                     :data-id="card.id"
                     @click="open_card_detail(card.id)"
+                    @click.right.prevent="add_card(card.id)"
                   >
                     <img
                       :src="`./img/${card.id}.png`"
@@ -681,6 +726,7 @@
             input_deck_code: "",
             input_import_export: "",
             is_copy: true,
+            is_over_card: false,
             error_message: {
               deck: "",
               deck_code: "",
@@ -689,6 +735,7 @@
             options: {
               deck_card_size: 130,
               card_size: 180,
+              dropzone_max_height: 60,
             },
             select_deck: { name: "", index: null },
             select_sort: [
@@ -2329,6 +2376,14 @@
                   a[this.deck_card_sort.value] - b[this.deck_card_sort.value]
               );
           },
+          // 重複削除したデッキカードの情報取得
+          deduplication_deck_cards() {
+            return this.deck_cards.filter((element, index) => {
+              return (
+                this.deck_cards.findIndex((e) => e.id == element.id) === index
+              );
+            });
+          },
           sort_cards() {
             return this.cards.sort(
               (a, b) => a[this.card_sort.value] - b[this.card_sort.value]
@@ -2639,6 +2694,12 @@
         top: -0px;
         left: 0;
         /* display: flex; */
+      }
+
+      .icon-numeric-2 {
+        position: absolute;
+        top: 20px;
+        left: 55px;
       }
 
       #outer-dropzone {
