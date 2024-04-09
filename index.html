@@ -619,24 +619,31 @@
             </v-row>
             <!-- カード一覧 -->
             <v-row>
-              <template v-for="card in sort_cards">
-                <v-col cols="auto" class="pa-1" v-show="filter(card)">
-                  <div
-                    :class="{draggable:is_darg_card(card.id)}"
-                    :data-id="card.id"
-                    @click="open_card_detail(card.id)"
-                    @click.right.prevent="add_card(card.id)"
-                  >
-                    <img
-                      :src="`./img/${card.id}.png`"
-                      class="card-img"
-                      :class="{'bg-bark':!is_darg_card(card.id)}"
-                      :width="options.card_size"
-                    />
-                  </div>
-                </v-col>
-              </template>
+              <v-col cols="1" v-if="is_mobile"></v-col>
+              <v-col>
+                <v-row>
+                  <template v-for="card in sort_cards">
+                    <v-col cols="auto" class="pa-1" v-show="filter(card)">
+                      <div
+                        :class="{draggable:is_darg_card(card.id)}"
+                        :data-id="card.id"
+                        @click="open_card_detail(card.id)"
+                        @click.right.prevent="add_card(card.id)"
+                      >
+                        <img
+                          :src="`./img/${card.id}.png`"
+                          class="card-img"
+                          :class="{'bg-bark':!is_darg_card(card.id)}"
+                          :width="options.card_size"
+                        />
+                      </div>
+                    </v-col>
+                  </template>
+                </v-row>
+              </v-col>
+              <v-col cols="1" v-if="is_mobile"></v-col>
             </v-row>
+
             <!-- ダイアログ -->
             <!-- 詳細ダイアログ -->
             <v-dialog v-model="show_dialog_detail" width="auto">
@@ -2262,6 +2269,10 @@
           };
         },
         created() {
+          if (this.is_mobile) {
+            this.options.deck_card_size = 65;
+            this.options.card_size = 140;
+          }
           if (localStorage.deck_list) {
             this.decks = JSON.parse(localStorage.deck_list);
           }
@@ -2284,8 +2295,6 @@
           // channel.postMessage({ test: 123 });
         },
         mounted() {
-          // localStorage.saveKey = "value";
-          // console.log(localStorage.decks);
           const position = { x: 0, y: 0 };
 
           //   ドラッグイベント
@@ -2405,6 +2414,20 @@
               if (this.filters[key].length) return true;
             }
             return false;
+          },
+          // スマホか
+          is_mobile() {
+            const userAgent = window.navigator.userAgent.toLowerCase();
+            if (
+              userAgent.indexOf("iphone") != -1 ||
+              userAgent.indexOf("ipad") != -1 ||
+              userAgent.indexOf("android") != -1 ||
+              userAgent.indexOf("mobile") != -1
+            ) {
+              return true;
+            } else {
+              return false;
+            }
           },
         },
         methods: {
@@ -2699,7 +2722,7 @@
       .icon-numeric-2 {
         position: absolute;
         top: 20px;
-        left: 55px;
+        left: 40%;
       }
 
       #outer-dropzone {
