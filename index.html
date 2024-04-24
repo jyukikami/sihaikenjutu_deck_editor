@@ -16,12 +16,25 @@
     <script src="https://cdn.jsdelivr.net/npm/vuetify@3.5.13/dist/vuetify.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     <title>支配剣術デッキ編集</title>
+    <link rel="icon" href="./logo/favicon.ico" />
   </head>
   <body>
     <div id="app">
       <v-app id="inspire">
         <v-main>
-          <v-container class="" fluid>
+          <v-container fluid>
+            <v-row>
+              <v-col>
+                <img src="./logo/logo.png" />
+              </v-col>
+              <v-col cols="auto" class="ms-auto">
+                <v-btn
+                  density="default"
+                  icon="mdi-cog"
+                  @click="show_option = !show_option"
+                ></v-btn>
+              </v-col>
+            </v-row>
             <!-- デッキメニュー　＋　オプションボタン -->
             <v-row>
               <v-col cols="auto">
@@ -37,7 +50,7 @@
                   single-line
                 ></v-select>
               </v-col>
-              <v-col cols="3">
+              <v-col cols="4">
                 <v-text-field
                   label="名前"
                   variant="outlined"
@@ -46,31 +59,74 @@
                 ></v-text-field>
               </v-col>
               <v-col cols="auto">
-                <v-btn class="ma-2" variant="tonal" @click="add_deck()">
+                <v-btn
+                  class="ma-2"
+                  color="blue"
+                  variant="tonal"
+                  @click="add_deck()"
+                >
                   新規デッキ
                 </v-btn>
               </v-col>
               <v-col cols="auto">
-                <v-btn class="ma-2" variant="tonal" @click="copy_deck()">
+                <v-btn
+                  class="ma-2"
+                  color="light-green"
+                  variant="tonal"
+                  @click="copy_deck()"
+                >
                   デッキコピー
                 </v-btn>
               </v-col>
               <v-col cols="auto">
-                <v-btn class="ma-2" variant="tonal" @click="delete_deck()">
+                <v-btn
+                  class="ma-2"
+                  color="red"
+                  variant="tonal"
+                  @click="delete_deck()"
+                >
                   デッキ削除
                 </v-btn>
               </v-col>
               <v-col cols="auto">
-                <v-btn class="ma-2" variant="tonal" @click="save()">
+                <v-btn
+                  class="ma-2"
+                  color="green"
+                  variant="tonal"
+                  @click="save()"
+                >
                   全て保存
                 </v-btn>
               </v-col>
-              <v-col cols="auto" class="ms-auto">
+              <!-- シミュレーションボタン -->
+              <v-col cols="auto">
                 <v-btn
-                  density="default"
-                  icon="mdi-cog"
-                  @click="show_option = !show_option"
-                ></v-btn>
+                  class="ma-2"
+                  variant="tonal"
+                  @click="open_dialog_simulation()"
+                >
+                  シミュレーション
+                </v-btn>
+              </v-col>
+              <!-- デッキコード入力 -->
+              <v-col cols="auto">
+                <v-btn
+                  class="ma-2"
+                  variant="tonal"
+                  @click="show_input_deck_code = !show_input_deck_code"
+                >
+                  デッキコード入力
+                </v-btn>
+              </v-col>
+              <!-- インポート・エクスポート -->
+              <v-col cols="auto">
+                <v-btn
+                  class="ma-2"
+                  variant="tonal"
+                  @click="show_import_export = !show_import_export"
+                >
+                  インポート・エクスポート
+                </v-btn>
               </v-col>
             </v-row>
             <!-- オプション -->
@@ -141,6 +197,100 @@
                 </v-col>
               </v-row>
             </v-expand-transition>
+            <!-- デッキコード入力 -->
+            <v-expand-transition>
+              <v-row v-show="show_input_deck_code">
+                <v-col cols="12" class="px-0">
+                  <v-card class="mx-auto" variant="outlined">
+                    <v-card-title class="text-h6"
+                      >デッキコードからデッキ復元</v-card-title
+                    >
+                    <v-row>
+                      <v-col cols="12">
+                        <v-text-field
+                          variant="outlined"
+                          label="デッキコード"
+                          :error-messages="error_message.deck_code"
+                          v-model="input_deck_code"
+                        ></v-text-field>
+                      </v-col>
+                    </v-row>
+                    <v-row>
+                      <v-col cols="auto">
+                        <v-btn
+                          class="ma-2"
+                          variant="tonal"
+                          @click="decode_deck_code(false)"
+                        >
+                          デッキ上書き
+                        </v-btn>
+                      </v-col>
+                      <v-col cols="auto">
+                        <v-btn
+                          class="ma-2"
+                          variant="tonal"
+                          @click="decode_deck_code(true)"
+                        >
+                          新規デッキ
+                        </v-btn>
+                      </v-col>
+                    </v-row>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-expand-transition>
+            <!-- インポート・エクスポート -->
+            <v-expand-transition>
+              <v-row v-show="show_import_export">
+                <v-col cols="12" class="px-0">
+                  <v-card class="mx-auto" variant="outlined">
+                    <v-card-title class="text-h6"
+                      >全デッキデータのインポート・エクスポート</v-card-title
+                    >
+                    <v-row>
+                      <v-col cols="auto">
+                        <v-btn
+                          class="ma-2"
+                          variant="tonal"
+                          @click="export_decks()"
+                        >
+                          エクスポート
+                        </v-btn>
+                      </v-col>
+                    </v-row>
+                    <v-row>
+                      <v-col cols="12">
+                        <v-text-field
+                          variant="outlined"
+                          :error-messages="error_message.import_export"
+                          v-model="input_import_export"
+                        ></v-text-field>
+                      </v-col>
+                    </v-row>
+                    <v-row>
+                      <v-col cols="auto">
+                        <v-btn
+                          class="ma-2"
+                          variant="tonal"
+                          @click="import_decks(false)"
+                        >
+                          データ上書き
+                        </v-btn>
+                      </v-col>
+                      <v-col cols="auto">
+                        <v-btn
+                          class="ma-2"
+                          variant="tonal"
+                          @click="import_decks(true)"
+                        >
+                          新規で追加
+                        </v-btn>
+                      </v-col>
+                    </v-row>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-expand-transition>
             <!-- デッキカード -->
             <v-row align-content="center">
               <v-col cols="auto">
@@ -169,9 +319,11 @@
                   inset
                 ></v-switch>
               </v-col>
-              <v-col>
+              <v-col cols="5">
                 <v-text-field
                   label="デッキコード"
+                  placeholder="デッキに20枚編成してコード生成"
+                  persistent-placeholder
                   variant="outlined"
                   prepend-inner-icon="mdi-content-copy"
                   :error-messages="error_message.deck"
@@ -193,7 +345,7 @@
                   </template>
                 </v-snackbar>
               </v-col>
-              <v-col cols="2">
+              <v-col cols="auto">
                 <v-switch
                   v-model="is_copy"
                   :label="is_copy ? 'デッキコピー許可' : 'デッキコピー不可'"
@@ -350,34 +502,6 @@
                   フィルター
                 </v-btn>
               </v-col>
-              <!-- シミュレーションボタン -->
-              <v-col cols="auto">
-                <v-btn
-                  class="ma-2"
-                  variant="tonal"
-                  @click="open_dialog_simulation()"
-                >
-                  シミュレーション
-                </v-btn>
-              </v-col>
-              <v-col cols="auto">
-                <v-btn
-                  class="ma-2"
-                  variant="tonal"
-                  @click="show_input_deck_code = !show_input_deck_code"
-                >
-                  デッキコード入力
-                </v-btn>
-              </v-col>
-              <v-col cols="auto">
-                <v-btn
-                  class="ma-2"
-                  variant="tonal"
-                  @click="show_import_export = !show_import_export"
-                >
-                  インポート・エクスポート
-                </v-btn>
-              </v-col>
             </v-row>
             <!-- カード一覧メニュー -->
             <v-row>
@@ -386,7 +510,10 @@
                 <v-expand-transition>
                   <v-row v-show="show_filter">
                     <v-col cols="auto" class="px-0">
-                      <v-card class="mx-auto bg-secondary" variant="outlined">
+                      <v-card
+                        class="mx-auto bg-grey-darken-4"
+                        variant="outlined"
+                      >
                         <v-card-title class="text-h6">コスト</v-card-title>
                         <v-row>
                           <v-col cols="auto">
@@ -421,7 +548,10 @@
                       </v-card>
                     </v-col>
                     <v-col cols="auto" class="px-0">
-                      <v-card class="mx-auto bg-secondary" variant="outlined">
+                      <v-card
+                        class="mx-auto bg-grey-darken-4"
+                        variant="outlined"
+                      >
                         <v-card-title class="text-h6">強度</v-card-title>
                         <v-row>
                           <v-col cols="auto">
@@ -463,7 +593,10 @@
                       </v-card>
                     </v-col>
                     <v-col cols="auto" class="px-0">
-                      <v-card class="mx-auto bg-secondary" variant="outlined">
+                      <v-card
+                        class="mx-auto bg-grey-darken-4"
+                        variant="outlined"
+                      >
                         <v-card-title class="text-h6">技・呪文</v-card-title>
                         <v-row>
                           <v-col cols="auto">
@@ -485,7 +618,10 @@
                       </v-card>
                     </v-col>
                     <v-col cols="auto" class="px-0">
-                      <v-card class="mx-auto bg-secondary" variant="outlined">
+                      <v-card
+                        class="mx-auto bg-grey-darken-4"
+                        variant="outlined"
+                      >
                         <v-card-title class="text-h6">タグ</v-card-title>
                         <v-row justify="space-around">
                           <v-col cols="auto">
@@ -507,8 +643,11 @@
                         </v-row>
                       </v-card>
                     </v-col>
-                    <v-col cols="3" class="px-0 w-20">
-                      <v-card class="bg-secondary" variant="outlined">
+                    <v-col cols="12" class="px-0 w-20">
+                      <v-card
+                        class="mx-auto bg-grey-darken-4"
+                        variant="outlined"
+                      >
                         <v-card-title class="text-h6">検索</v-card-title>
                         <v-row>
                           <v-col>
@@ -516,99 +655,6 @@
                               variant="outlined"
                               v-model="filters.word"
                             ></v-text-field>
-                          </v-col>
-                        </v-row>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                </v-expand-transition>
-                <!-- デッキコード入力 -->
-                <v-expand-transition>
-                  <v-row v-show="show_input_deck_code">
-                    <v-col cols="10" class="px-0">
-                      <v-card class="mx-auto" variant="outlined">
-                        <v-card-title class="text-h6"
-                          >デッキコードからデッキ復元</v-card-title
-                        >
-                        <v-row>
-                          <v-col cols="12">
-                            <v-text-field
-                              variant="outlined"
-                              label="デッキコード"
-                              :error-messages="error_message.deck_code"
-                              v-model="input_deck_code"
-                            ></v-text-field>
-                          </v-col>
-                        </v-row>
-                        <v-row>
-                          <v-col cols="auto">
-                            <v-btn
-                              class="ma-2"
-                              variant="tonal"
-                              @click="decode_deck_code(false)"
-                            >
-                              デッキ上書き
-                            </v-btn>
-                          </v-col>
-                          <v-col cols="auto">
-                            <v-btn
-                              class="ma-2"
-                              variant="tonal"
-                              @click="decode_deck_code(true)"
-                            >
-                              新規デッキ
-                            </v-btn>
-                          </v-col>
-                        </v-row>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                </v-expand-transition>
-                <v-expand-transition>
-                  <v-row v-show="show_import_export">
-                    <v-col cols="10" class="px-0">
-                      <v-card class="mx-auto" variant="outlined">
-                        <v-card-title class="text-h6"
-                          >インポート・エクスポート</v-card-title
-                        >
-                        <v-row>
-                          <v-col cols="auto">
-                            <v-btn
-                              class="ma-2"
-                              variant="tonal"
-                              @click="export_decks()"
-                            >
-                              エクスポート
-                            </v-btn>
-                          </v-col>
-                        </v-row>
-                        <v-row>
-                          <v-col cols="12">
-                            <v-text-field
-                              variant="outlined"
-                              :error-messages="error_message.import_export"
-                              v-model="input_import_export"
-                            ></v-text-field>
-                          </v-col>
-                        </v-row>
-                        <v-row>
-                          <v-col cols="auto">
-                            <v-btn
-                              class="ma-2"
-                              variant="tonal"
-                              @click="import_decks(false)"
-                            >
-                              データ上書き
-                            </v-btn>
-                          </v-col>
-                          <v-col cols="auto">
-                            <v-btn
-                              class="ma-2"
-                              variant="tonal"
-                              @click="import_decks(true)"
-                            >
-                              新規で追加
-                            </v-btn>
                           </v-col>
                         </v-row>
                       </v-card>
@@ -723,7 +769,7 @@
             show_dialog_detail: false,
             show_dialog_simulation: false,
             show_snackbar_copy: false,
-            show_input_deck_code: false,
+            show_input_deck_code: true,
             show_import_export: false,
             num_simulation_card: 4,
             random_simulation_cards: [],
@@ -2613,9 +2659,9 @@
               }
               const card_index = this.cards.findIndex((e) => e.no == no);
               if (card_index === -1) {
-                this.error_message.deck_code =
-                  "読み取りエラー、対象カードが見つかりません";
-                return;
+                // this.error_message.deck_code =
+                //   "読み取りエラー、対象カードが見つかりません";
+                continue;
               }
               ids.push({ id: this.cards[card_index].id });
             }
